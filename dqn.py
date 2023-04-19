@@ -35,7 +35,7 @@ env = Environment()
 # Create DQN agent and train it
 agent = pk.DQNAgent([4, 64, 64, 2])
 agent.set_save_freq(100, 'cartpole_agent')
-agent.train(env, 50, pk.Adam(0.01), render=True)
+agent.train(env, 50, pk.Adam(0.001), render=True)
 
 # Plot reward graph
 env.render()
