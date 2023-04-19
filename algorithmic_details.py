@@ -113,7 +113,7 @@ self._performance_log['learning_rate'] = []
 # self._init_train(batch_size)
 def _get_batch_grad(self, epoch, batch_size, training_data, targets):
     # Total gradient for the batch
-    total_gradient = 0
+    total_gradient = 0  # zero grad pytorch
 
     # feed the batch
     start_index = (epoch*batch_size) % training_data.shape[0]
@@ -131,7 +131,8 @@ def _get_batch_grad(self, epoch, batch_size, training_data, targets):
         # Get gradient
         total_gradient += self._backpropagate(example, targets[index])
 
-    # return the total
+    # return the total divide by batch size to not make it explode.
+    # Dividing essentially acts together with learning_rate later on
     return total_gradient/batch_size
 
 self._get_batch_grad = lambda *args: _get_batch_grad(self, *args)
@@ -143,8 +144,12 @@ for epoch in pbar:
 
     # After completing a batch, average the total sum of gradients and tweak the parameters
     self._mparams = optimizer._optimize(self._mparams, total_gradient)
+    # Zeros your gradients for every batch: optimizer.zero_grad()
+    # Makes predictions for this batch: outputs = model(inputs)
+    # Compute the loss and its gradients: loss = loss_fn(outputs, labels); loss.backward()
+    # Adjust learning weights: optimizer.step()
 
-    # Decay the learning rate
+    # Decay the learning rate (not a part of pytorch)
     if (epoch+1) % decay_freq == 0:
         optimizer._decay()
 
