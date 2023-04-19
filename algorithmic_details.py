@@ -1,5 +1,8 @@
 import pykitml as pk
 from pykitml.datasets import fishlength
+import numpy as np
+import tqdm
+
 # Load the dataset
 inputs, outputs = fishlength.load()
 
@@ -9,9 +12,6 @@ inputs = pk.normalize_minmax(inputs, array_min, array_max)
 optimizer = pk.GradientDescent(learning_rate=0.01, decay_rate=0)
 
 # ------ Setup model ------ #
-import numpy as np
-import tqdm
-
 self = lambda x:x
 input_size = inputs.shape[1]
 output_size = 1
@@ -131,7 +131,7 @@ def _get_batch_grad(self, epoch, batch_size, training_data, targets):
         # Get gradient
         total_gradient += self._backpropagate(example, targets[index])
 
-    # return the total divide by batch size to not make it explode.
+    # return the total divide by batch size to not make it explode with large batch sizes
     # Dividing essentially acts together with learning_rate later on
     return total_gradient/batch_size
 
@@ -141,13 +141,15 @@ self._get_batch_grad = lambda *args: _get_batch_grad(self, *args)
 pbar = tqdm.trange(0, epochs, ncols=80, unit='epochs')
 for epoch in pbar:
     total_gradient = self._get_batch_grad(epoch, batch_size, training_data, targets)
+    # Since there isn't an implementation equivalent to 'loss' in pytorch,
+    # we use the Minimize model class to accomplish above functionality and inherit this in Model itself
 
-    # After completing a batch, average the total sum of gradients and tweak the parameters
+    # Zeros your gradients for every batch: self._get_batch_grad -> optimizer.zero_grad()
+    # Makes predictions for this batch: self.feed -> outputs = model(inputs)
+    # Compute the loss and its gradients: self._backpropagate -> loss = loss_fn(outputs, labels); loss.backward()
+
     self._mparams = optimizer._optimize(self._mparams, total_gradient)
-    # Zeros your gradients for every batch: optimizer.zero_grad()
-    # Makes predictions for this batch: outputs = model(inputs)
-    # Compute the loss and its gradients: loss = loss_fn(outputs, labels); loss.backward()
-    # Adjust learning weights: optimizer.step()
+     # Adjust learning weights: optimizer._optimize -> optimizer.step()
 
     # Decay the learning rate (not a part of pytorch)
     if (epoch+1) % decay_freq == 0:
