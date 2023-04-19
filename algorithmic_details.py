@@ -2,6 +2,7 @@ import pykitml as pk
 from pykitml.datasets import fishlength
 import numpy as np
 import tqdm
+import matplotlib.pyplot as plt
 
 # Load the dataset
 inputs, outputs = fishlength.load()
@@ -9,7 +10,6 @@ inputs, outputs = fishlength.load()
 # Normalize inputs
 array_min, array_max = pk.get_minmax(inputs)
 inputs = pk.normalize_minmax(inputs, array_min, array_max)
-optimizer = pk.GradientDescent(learning_rate=0.01, decay_rate=0)
 
 # ------ Setup model ------ #
 self = lambda x:x
@@ -45,7 +45,7 @@ self._mparams = self._params
 # Activations refer to the value of the function itself before weight update
 self._activ_func = lambda weighted_sum: weighted_sum  # Identity function as activation
 self._activ_func_prime = lambda weighted_sum, activations: 1  # the derivative of identity w.r.t layer's weighted sum.
-self._cost_func = lambda output, target: 0.5 * ((output - target) ** 2)
+self._cost_function = lambda output, target: 0.5 * ((output - target) ** 2)
 self._cost_func_prime = lambda output, target: output - target
 
 def _backpropagate(self, index, target):
@@ -89,14 +89,31 @@ def _get_norm_weights(self):
 
 self._get_norm_weights = lambda *args: _get_norm_weights(self, *args)
 
+self.get_output = lambda : self.a.squeeze()
+def cost(self, testing_data, testing_targets):
+    # Evalute over all the testing data and get outputs
+    self.feed(testing_data)
+    output_targets = self.get_output()
 
+    # Calculate cost
+    cost = np.sum(self._cost_function(output_targets, testing_targets))
+    # Add regularization
+    cost += self._get_norm_weights()
+
+    # Average the cost
+    cost = cost/testing_data.shape[0]
+
+    # return cost
+    return round(cost, 2)
+
+self.cost = lambda *args: cost(self, *args)
 
 # ------ Train model ------ #
 training_data=inputs
 targets=outputs
 batch_size=20
 epochs=200
-optimizer=pk.GradientDescent(learning_rate=0.01, decay_rate=0)
+optimizer=pk.GradientDescent(learning_rate=0.1, decay_rate=0.95)
 testing_data=None
 testing_targets=None
 testing_freq=1
@@ -137,7 +154,6 @@ def _get_batch_grad(self, epoch, batch_size, training_data, targets):
 
 self._get_batch_grad = lambda *args: _get_batch_grad(self, *args)
 
-
 pbar = tqdm.trange(0, epochs, ncols=80, unit='epochs')
 for epoch in pbar:
     total_gradient = self._get_batch_grad(epoch, batch_size, training_data, targets)
@@ -149,6 +165,7 @@ for epoch in pbar:
     # Compute the loss and its gradients: self._backpropagate -> loss = loss_fn(outputs, labels); loss.backward()
 
     self._mparams = optimizer._optimize(self._mparams, total_gradient)
+    self._params = self._mparams
      # Adjust learning weights: optimizer._optimize -> optimizer.step()
 
     # Decay the learning rate (not a part of pytorch)
@@ -169,3 +186,5 @@ for epoch in pbar:
         pbar.set_postfix(cost=cost_train)
         self._performance_log['cost_train'].append(cost_train)
 
+
+plt.plot(self._performance_log['cost_train'])
