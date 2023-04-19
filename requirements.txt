@@ -3,3 +3,7 @@ pandas
 pykitml
 matplotlib
 tqdm
+gymnasium
+gymnasium[classic-control]
+gymnasium[atari]
+gymnasium[accept-rom-license]`
