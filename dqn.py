@@ -38,7 +38,5 @@ agent.set_save_freq(100, 'cartpole_agent')
 agent.train(env, 50, pk.Adam(0.001), render=True)
 
 # Plot reward graph
-env.render()
-
 agent.plot_performance()
 
